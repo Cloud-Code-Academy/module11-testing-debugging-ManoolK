@@ -76,21 +76,18 @@ public with sharing class LeadTriggerHandler {
 	 */
 	public static void handleAutoLeadScoring(List<Lead> leadsToScore) {
 		for (Lead ld : leadsToScore) {
-			Integer score = 10;
+			Integer score = 0;
 
 			// Check and add points based on the specified conditions
-			if (ld.LeadSource == 'Website' && ld.Email != null) {
-				score = 3;
+			if (ld.LeadSource == 'Web' && ld.Email != null) {
+				score += 3;
 			}
-
 			if (ld.Phone != null) {
-				score = 5;
+				score += 5;
 			}
-
 			if (ld.Industry == 'Technology') {
-				score = 10;
+				score += 10;
 			}
-
 			ld.Lead_Score__c = score; // Set the computed score back to the lead
 		}
 	}

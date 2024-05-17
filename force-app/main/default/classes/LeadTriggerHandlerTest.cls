@@ -82,4 +82,38 @@ private class LeadTriggerHandlerTest {
             Assert.areEqual('Assistant', lead.Title, 'Expected Title \'Assistant\'');
         }
     }
+
+    /*
+    * LeadTriggerHandler.handleTitleNormalization update test
+    */
+    @isTest
+    static void testHandleAutoLeadScoring() {
+        // Prepare the test data
+        List<Map<String, Object>> params = new List<Map<String, Object>>();
+        params.add(new Map<String, Object>{'Lead_Score__c' => 20, 'LeadSource' => null}); // 0
+        params.add(new Map<String, Object>{'LeadSource' => 'Other', 'Email' => 'test@mail.com'}); // 0
+        params.add(new Map<String, Object>{'LeadSource' => 'Web', 'Email' => 'test@mail.com'}); // 3
+        params.add(new Map<String, Object>{'Phone' => '(908)345-1234', 'Industry' => 'Government'}); // 5
+        params.add(new Map<String, Object>{'LeadSource' => 'Web', 'Email' => 'test2@mail.com', 'Phone' => '(908)345-2345'}); // 8
+        params.add(new Map<String, Object>{'Lead_Score__c' => 10, 'Email' => 'test3@mail.com', 'Industry' => 'Technology'}); // 10
+        params.add(new Map<String, Object>{'LeadSource' => 'Web', 'Email' => 'test4@mail.com', 'Industry' => 'Technology'}); // 13
+        params.add(new Map<String, Object>{'LeadSource' => 'Web', 'Phone' => '(908)346-1234', 'Industry' => 'Technology'}); // 15
+        params.add(new Map<String, Object>{'LeadSource' => 'Web', 'Email' => 'test5@mail.com', 
+                                           'Phone' => '(908)346-1234', 'Industry' => 'Technology'}); // 18
+
+        List<Lead> leadsToScore = TestDataFactory.createLeadsByParams(params, false);
+        
+        // Perform the test
+        Test.startTest();
+        LeadTriggerHandler.handleAutoLeadScoring(leadsToScore);
+        Test.stopTest();
+
+        // Assert that the Score calculates correctly
+        List<Integer> scoreVariants = new List<Integer>{0, 0, 3, 5, 8, 10, 13, 15, 18};
+        for (Integer i = 0; i < leadsToScore.size(); i++) {
+            Assert.isTrue(leadsToScore[i].Lead_Score__c <= 18, 'Lead score shouldn\'t be more than 18');
+            Assert.areEqual(scoreVariants[i], leadsToScore[i].Lead_Score__c, 'Score has not correctly calculated');
+        }
+        
+    }
 }

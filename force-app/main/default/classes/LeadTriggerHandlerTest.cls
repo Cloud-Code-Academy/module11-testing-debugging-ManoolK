@@ -116,4 +116,103 @@ private class LeadTriggerHandlerTest {
         }
         
     }
+
+    @isTest
+    static void testHandleLeadAutoConvert_insertPositive() {
+        // Prepare the test data
+        TestDataFactory.generateAccountWithContacts(50, 7); // 7 contacts with a unique email
+        Map<String, Object> params = new Map<String, Object>{'LeadSource' => 'Web', 'Email' => 'test'};
+        List<Lead> leads = TestDataFactory.createLeadsWithParams(50, params, false);
+
+        // Perform the test
+        Test.startTest();
+        Database.insert(leads);
+        Test.stopTest();
+
+        // Request resulted Leads
+        List<Lead> insertedLeads = [
+            SELECT Id, Email, IsConverted
+            FROM Lead
+        ];
+        // Assertions
+        Assert.isTrue(insertedLeads.size() == 50, 'Expected 50 Leads inserted');
+        Integer converted = 0;
+        for (Integer i = 0; i < 50; i++) {
+            if (i > 0 && Math.mod(i, 7) == 0) {
+                Assert.isTrue(insertedLeads[i].IsConverted, 'Lead with email ' + insertedLeads[i].Email + ' expected to be converted');
+                converted++;
+            } else {
+                Assert.isFalse(insertedLeads[i].IsConverted, 'Lead with email ' + insertedLeads[i].Email + ' shouldn\t be converted');
+            }
+        }
+        Assert.isTrue(converted == 7, 'Expected 7 Leads converted');
+    }
+
+    @isTest
+    static void testHandleLeadAutoConvert_insertNegative() {
+        // Prepare the test data
+        TestDataFactory.generateAccountWithContacts(5, 2); // 2 contacts with a unique email
+        Map<String, Object> params = new Map<String, Object>{'LeadSource' => 'Web', 
+                                                            'Status' => 'Closed - Converted', 
+                                                            'Email' => 'test'};
+        List<Lead> leads = TestDataFactory.createLeadsWithParams(5, params, false);
+
+        // Perform the test
+        Test.startTest();
+        Database.insert(leads);
+        Test.stopTest();
+
+        // Request resulted Leads
+        List<Lead> insertedLeads = [
+            SELECT 
+                Id, 
+                Email, 
+                IsConverted
+            FROM Lead
+        ];
+        // Assertions
+        Assert.isTrue(insertedLeads.size() == 5, 'Expected 5 Leads inserted');
+        for (Lead lead : insertedLeads) {
+            Assert.isFalse(lead.IsConverted, 'Lead should\'t be converted');
+        }
+    }
+
+    @isTest
+    static void testHandleLeadAutoConvert_update() {
+        // Prepare the test data
+        TestDataFactory.generateAccountWithContacts(5, 2); // 2 contacts with a unique email
+        Map<String, Object> params = new Map<String, Object>{'LeadSource' => 'Web'};
+        List<Lead> leads = TestDataFactory.createLeadsWithParams(2, params, true);
+
+        // Change email
+        List<Lead> leadsToUpdate = [
+            SELECT 
+                Id, 
+                Email
+            FROM Lead
+            WHERE Id IN :leads 
+                AND IsConverted = false
+        ];
+        Assert.areEqual(2, leadsToUpdate.size(), 'Expected to get 2 unconverted Leads');
+        leadsToUpdate[0].Email = 'test0@mail.com'; // not going to be converted
+        leadsToUpdate[1].Email = 'test1@mail.com'; // going to be converted
+
+        // Perform the test
+        Test.startTest();
+        Database.update(leadsToUpdate);
+        Test.stopTest();
+
+        // Request resulted Leads
+        List<Lead> updatedLeads = [
+            SELECT 
+                Id, 
+                Email, 
+                IsConverted
+            FROM Lead
+            WHERE Id IN :leadsToUpdate
+        ];
+        // Assertions
+        Assert.isFalse(updatedLeads[0].IsConverted, 'Lead with email ' + updatedLeads[0].Email + ' shouldn\'t be converted');
+        Assert.isTrue(updatedLeads[1].IsConverted, 'Lead with email ' + updatedLeads[1].Email + ' expected to be converted');
+    }
 }
